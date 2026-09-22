@@ -25,6 +25,21 @@ The dataset contains motor phase-current images (already converted from raw sign
 
 **Note:** ResNet50, VGG16, and EfficientNetB0's low scores are likely attributable to a preprocessing mismatch (all models were fed MobileNet-specific input normalization, inherited from the reference implementation) rather than a genuine architectural limitation. See the full report for details.
 
+## Supplementary experiment: can 1 current sensor replace 3?
+
+A second, independent experiment ([`phase_reconstruction_experiment.py`](./phase_reconstruction_experiment.py)) tests whether the two missing phase currents can be mathematically reconstructed from a single sensor (using the theoretical 120°/240° phase relationship), calibrated on healthy data and tested across all four conditions.
+
+**Result:** reconstruction is near-perfect on healthy data but degrades monotonically and severely as fault severity increases — meaning single-sensor reconstruction cannot safely replace 3 physical sensors, since it fails specifically when a fault occurs. Full results in [`phase_reconstruction_results.csv`](./phase_reconstruction_results.csv).
+
+| Condition | ib correlation | ic correlation |
+|---|---|---|
+| no_delay (healthy) | 0.998 | 0.999 |
+| 0.0001s | 0.986 | 0.970 |
+| 0.005s | 0.880 | 0.667 |
+| 0.01s | 0.364 | 0.140 |
+
+**Interesting side-finding:** since reconstruction error grows predictably with fault severity, the error itself could serve as a lightweight, AI-free fault indicator — a promising direction for future work alongside the CNN-based approach above.
+
 ## Setup
 
 ```powershell
