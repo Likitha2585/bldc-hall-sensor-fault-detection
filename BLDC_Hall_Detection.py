@@ -17,8 +17,8 @@ import os
 import time
 import random
 
-no_delay_dir = "D:/Likitha Project/data_in_RGB_after_preprocessing/no_delay/augmented"
-fault_dir    = "D:/Likitha Project/data_in_RGB_after_preprocessing/0.0001/augmented"
+no_delay_dir = "C:/Users/likit/BLDC_Dataset_Backup/data_in_RGB_after_preprocessing/no_delay/augmented"
+fault_dir    = "C:/Users/likit/BLDC_Dataset_Backup/data_in_RGB_after_preprocessing/0.0001/augmented"
 
 no_delay_files = [os.path.join(no_delay_dir, f) for f in os.listdir(no_delay_dir)
                    if os.path.isfile(os.path.join(no_delay_dir, f))]

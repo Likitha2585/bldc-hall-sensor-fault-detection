@@ -24,7 +24,7 @@ import csv
 # ============================================================
 QUICK_TEST = False
 
-BASE_DATA_DIR = "D:/Likitha Project/data_in_RGB_after_preprocessing"
+BASE_DATA_DIR = "C:/Users/likit/BLDC_Dataset_Backup/data_in_RGB_after_preprocessing"
 NO_DELAY_DIR = f"{BASE_DATA_DIR}/no_delay/augmented"
 
 CONDITIONS = ["0.0001", "0.005", "0.01"]
