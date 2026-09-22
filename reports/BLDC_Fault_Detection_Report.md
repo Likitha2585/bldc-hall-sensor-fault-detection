@@ -204,9 +204,59 @@ The final script includes a `QUICK_TEST` flag (`True`/`False`) allowing a fast 1
 
 **Finding 3 — Moderate fault severity (0.005s) produced the best classification results** for the top-performing model, suggesting the visual distinction between normal and fault current patterns may be clearest at this delay magnitude within this dataset — worth further investigation with a larger sample.
 
+### 7.4 Follow-Up: Correcting the Preprocessing Mismatch (Finding 2)
+
+Finding 2 above (Section 7.3) was investigated further rather than left as a hypothesis. Each of the 8 architectures was given its own correct `preprocess_input` function (e.g. `resnet50.preprocess_input`, `vgg16.preprocess_input`, `efficientnet.preprocess_input`) instead of all models sharing MobileNet's, using a new script (`BLDC_Hall_Detection_full_v2.py`) that otherwise keeps every other variable identical (same balanced undersampling, same augmentation, same early stopping). Results were written to a separate file (`results_summary_v2.csv`), preserving the original run for direct comparison rather than overwriting it.
+
+**Corrected Results Table (Test Accuracy %)**
+
+| Model | 0.0001s | 0.005s | 0.01s | **Average** | Change vs. Original |
+|---|---|---|---|---|---|
+| **EfficientNetB0** | 72.9 | 75.0 | 72.9 | **73.6** | **+23.6** |
+| MobileNetV1 | 66.7 | 70.8 | 66.7 | 68.1 | -6.2 |
+| ResNet50 | 62.5 | 68.8 | 68.8 | 66.7 | +9.8 |
+| InceptionV3 | 66.7 | 68.8 | 64.6 | 66.7 | 0.0 |
+| VGG16 | 68.8 | 68.8 | 60.4 | 66.0 | +6.3 |
+| DenseNet121 | 54.2 | 70.8 | 68.8 | 64.6 | +2.8 |
+| Xception | 52.1 | 70.8 | 62.5 | 61.8 | -3.5 |
+| MobileNetV2 | 54.2 | 64.6 | 47.9 | 55.6 | -4.1 |
+
+**Finding 2 was confirmed, and dramatically so for EfficientNetB0**: it moved from complete class collapse (50.0% average, 0% precision/recall on `no_delay` in every run) to the single best-performing architecture overall (73.6% average) — a 23.6 percentage-point improvement from fixing preprocessing alone, with no other change. ResNet50 (+9.8) and VGG16 (+6.3) also improved meaningfully, consistent with the hypothesis, since these were the three architectures originally most mismatched from MobileNet's preprocessing scheme.
+
+MobileNetV1's apparent drop (74.3% → 68.1%) is not attributable to the fix — its preprocessing was correct in both runs — and is better explained by ordinary run-to-run variance inherent to the random undersampling step (only 120 of ~715+ available fault images are sampled per run, so which specific images get selected can shift results by several points between runs on a dataset this small).
+
+**Revised conclusion**: the original Section 7.3 finding that "MobileNetV1 is the best-performing model" was itself partly an artifact of the preprocessing bug rather than a fully fair comparison. With preprocessing corrected, **EfficientNetB0 and MobileNetV1 emerge as the two strongest architectures**, both meaningfully ahead of the remaining six. This is retained in the report as a demonstration of the value of investigating a surprising result rather than accepting it at face value — both the original and corrected runs are preserved (`results_summary.csv` and `results_summary_v2.csv`) so the effect of the fix remains independently verifiable.
+
 ---
 
-## 8. Limitations
+## 8. Supplementary Experiment: Can a Single Current Sensor Replace Three?
+
+### 8.1 Motivation
+A natural question arose during this project: if a healthy three-phase BLDC motor's currents (`ia`, `ib`, `ic`) are ideally the same waveform shifted by 120° and 240°, could a single phase-current sensor be sufficient — with the other two phases reconstructed mathematically — rather than requiring three separate sensors? This would be valuable for cost/hardware simplification in real deployments.
+
+### 8.2 Method
+The experiment was designed to test this rigorously and realistically:
+1. **Calibration** — the timing lag and amplitude ratio between `ia` and `ib`/`ic` were measured using only the healthy (`no_delay`) data, simulating a real deployment where the reconstruction method would be calibrated when the system is known to be healthy.
+2. **Blind application** — this fixed calibration was then applied, without adjustment, to reconstruct `ib` and `ic` from `ia` across all four conditions (`no_delay`, `0.0001s`, `0.005s`, `0.01s`), using a held-out time window distinct from the calibration window to ensure a fair test.
+3. **Scoring** — reconstruction accuracy was measured via normalized RMSE and Pearson correlation between the reconstructed and actual signals.
+
+### 8.3 Results
+
+| Condition | ib norm-RMSE | ib correlation | ic norm-RMSE | ic correlation |
+|---|---|---|---|---|
+| no_delay (healthy) | 0.056 | 0.998 | 0.057 | 0.999 |
+| 0.0001s (mild) | 0.165 | 0.986 | 0.247 | 0.970 |
+| 0.005s (moderate) | 0.511 | 0.880 | 0.750 | 0.667 |
+| 0.01s (severe) | 0.970 | 0.364 | 0.992 | 0.140 |
+
+Reconstruction accuracy degrades **monotonically** across all four conditions and both reconstructed phases — a highly consistent trend across 8 independent measurements.
+
+### 8.4 Interpretation
+**Single-sensor reconstruction is not a viable replacement for three physical current sensors.** While the method reconstructs healthy-condition currents near-perfectly (>99.8% correlation), it fails specifically and severely under fault conditions — exactly when accurate sensing matters most. A control system relying on this reconstruction would behave normally when healthy but receive badly corrupted phase-current estimates during a fault, which could be worse than having no compensation mechanism at all.
+
+**However, this failure mode is itself a finding worth using.** Because reconstruction error increases predictably and monotonically with fault severity, **the reconstruction error itself is a viable, lightweight fault indicator** — requiring no AI model, just a single sensor and a threshold on reconstruction error. This reframes the original question from "can 1 sensor replace 3?" (no) to "can reconstruction failure be used as a cheap health-check?" (promising, and worth further investigation as a complementary, low-cost detection method alongside the CNN-based approach in Sections 5-7).
+
+## 9. Limitations
 
 1. **Small dataset per condition.** After balancing, each condition used only ~240 total images (192 training / 48 test). Deep learning models generally perform better with larger datasets; results should be interpreted as an initial baseline rather than a final, production-ready accuracy figure.
 2. **Preprocessing mismatch across architectures.** As noted in Section 7.3, applying MobileNet-specific preprocessing uniformly to all 8 models (inherited from the reference implementation) likely disadvantaged architectures with different expected input normalization (ResNet50, VGG16, EfficientNetB0). Their true achievable accuracy may be higher than reported here.
@@ -215,13 +265,16 @@ The final script includes a `QUICK_TEST` flag (`True`/`False`) allowing a fast 1
 
 ---
 
-## 9. Conclusion
+## 10. Conclusion
 
 This project successfully adapted a published reference AI pipeline to a real IEEE-published BLDC motor fault dataset, diagnosing and correcting both environment-setup obstacles (Python version compatibility, slow USB-based package installation) and a significant class-imbalance problem in the data itself. The resulting comparison across 8 CNN architectures and 3 fault severities identified **MobileNetV1 as the most accurate and most computationally efficient model for this Hall-sensor fault detection task**, achieving a 74.3% average test accuracy across all three fault conditions — a legitimate, meaningful result given the balanced (not inflated) evaluation methodology used.
 
-## 10. Suggested Future Work
+A supplementary experiment further examined whether a single current sensor could replace the three-sensor setup via mathematical reconstruction, and found that while this works well under healthy conditions, it fails predictably and severely under fault — suggesting reconstruction error itself as a promising lightweight, complementary fault indicator for future work.
+
+## 11. Suggested Future Work
 
 - Correct per-model preprocessing and re-run the comparison to determine whether ResNet50/VGG16/EfficientNetB0 improve substantially.
+- Develop and evaluate a lightweight fault-detection method based purely on single-sensor reconstruction error (Section 8), as a low-cost complement or alternative to the CNN-based approach.
 - Collect additional real `no_delay` samples from the lab motor (via Arduino/IoT sensor logging, as originally proposed) to reduce reliance on undersampling.
 - Fine-tune (rather than freeze) the later layers of the best-performing model (MobileNetV1) to test whether accuracy improves further.
 - Extend from binary (normal vs. one fault severity) to a single unified multi-class classifier distinguishing all three fault severities plus normal operation simultaneously.

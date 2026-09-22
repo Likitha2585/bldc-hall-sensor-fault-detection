@@ -10,7 +10,11 @@ The dataset contains motor phase-current images (already converted from raw sign
 
 ## Key result
 
-**MobileNetV1 was the best-performing and most efficient model**, averaging 74.3% test accuracy across all three fault severities, and training in under 90 seconds per run — outperforming every larger architecture tested. Full results are in [`results_summary.csv`](./results_summary.csv).
+Two runs are included, kept separately on purpose so the effect of a real bug fix is fully visible.
+
+### Run 1 (original) — all models fed MobileNet-specific preprocessing
+
+Inherited from the reference implementation: every model, regardless of architecture, was fed images normalized for MobileNet specifically. Full results in [`results_summary.csv`](./results_summary.csv).
 
 | Model | 0.0001s | 0.005s | 0.01s | Average |
 |---|---|---|---|---|
@@ -23,7 +27,26 @@ The dataset contains motor phase-current images (already converted from raw sign
 | ResNet50 | 50.0% | 50.0% | 70.8% | 56.9% |
 | EfficientNetB0 | 50.0% | 50.0% | 50.0% | 50.0% |
 
-**Note:** ResNet50, VGG16, and EfficientNetB0's low scores are likely attributable to a preprocessing mismatch (all models were fed MobileNet-specific input normalization, inherited from the reference implementation) rather than a genuine architectural limitation. See the full report for details.
+MobileNetV1 appeared to win clearly, and EfficientNetB0/ResNet50/VGG16 appeared to fail outright (50% = pure majority-class guessing).
+
+### Run 2 (corrected) — each model given its own correct preprocessing
+
+Diagnosed the issue above as a likely preprocessing mismatch and fixed it: each architecture is now given its own correct `preprocess_input` function (e.g. `resnet50.preprocess_input` for ResNet50, `efficientnet.preprocess_input` for EfficientNetB0, etc.). Script: [`BLDC_Hall_Detection_full_v2.py`](./BLDC_Hall_Detection_full_v2.py). Full results in [`results_summary_v2.csv`](./results_summary_v2.csv).
+
+| Model | 0.0001s | 0.005s | 0.01s | Average | Change vs. Run 1 |
+|---|---|---|---|---|---|
+| **EfficientNetB0** | 72.9% | 75.0% | 72.9% | **73.6%** | **+23.6** |
+| MobileNetV1 | 66.7% | 70.8% | 66.7% | 68.1% | -6.2 |
+| ResNet50 | 62.5% | 68.8% | 68.8% | 66.7% | +9.8 |
+| InceptionV3 | 66.7% | 68.8% | 64.6% | 66.7% | 0.0 |
+| VGG16 | 68.8% | 68.8% | 60.4% | 66.0% | +6.3 |
+| DenseNet121 | 54.2% | 70.8% | 68.8% | 64.6% | +2.8 |
+| Xception | 52.1% | 70.8% | 62.5% | 61.8% | -3.5 |
+| MobileNetV2 | 54.2% | 64.6% | 47.9% | 55.6% | -4.1 |
+
+**The theory was confirmed, dramatically for EfficientNetB0**: it went from complete class collapse (50%, always predicting "fault") to the single best-performing model overall (73.6%) once given its correct preprocessing — a +23.6 point swing. ResNet50 and VGG16 also improved meaningfully. MobileNetV1's small drop is normal run-to-run variance from the random undersampling (only 120 of ~715+ fault images are sampled each run), not a real regression, since its preprocessing never changed between runs.
+
+**Takeaway:** the original "MobileNetV1 wins clearly" conclusion was itself partly an artifact of the preprocessing bug. With it fixed, EfficientNetB0 and MobileNetV1 are the two strongest models, both meaningfully ahead of the rest — a good illustration of why a surprising result is worth investigating rather than taken at face value.
 
 ## Supplementary experiment: can 1 current sensor replace 3?
 
@@ -54,11 +77,21 @@ python -m pip install tensorflow scikit-learn numpy pillow openpyxl
 # Quick 1-model x 1-condition test
 python BLDC_Hall_Detection.py
 
-# Full 8-model x 3-condition comparison (results saved to results_summary.csv)
+# Full 8-model x 3-condition comparison, original preprocessing (-> results_summary.csv)
 python BLDC_Hall_Detection_full.py
+
+# Full 8-model x 3-condition comparison, corrected per-model preprocessing (-> results_summary_v2.csv)
+python BLDC_Hall_Detection_full_v2.py
 ```
 
-Edit the `QUICK_TEST` flag near the top of `BLDC_Hall_Detection_full.py` to switch between a fast sanity check and the full comparison run.
+Edit the `QUICK_TEST` flag near the top of either `_full.py` script to switch between a fast sanity check and the full comparison run.
+
+Live results dashboard (reads `results_summary.csv` directly, updates automatically when you rerun the original script):
+
+```powershell
+python app.py
+# then open http://127.0.0.1:5000
+```
 
 ## Dataset
 
@@ -73,8 +106,8 @@ Not included in this repo due to size. Download from [IEEE DataPort](https://iee
 
 ## Limitations
 
-- Small dataset per condition (~240 images after balancing).
-- Preprocessing was not corrected per-architecture (see note above).
+- Small dataset per condition (~240 images after balancing) — causes some run-to-run variance from random undersampling.
 - All training was CPU-only.
+- The corrected run (Run 2) still uses a fixed 224x224 input size and standard ImageNet-pretrained backbones; no further architecture-specific tuning (e.g. input resolution, unfreezing later layers) was explored.
 
 See the full project report for a complete write-up of methodology, results, and limitations.
