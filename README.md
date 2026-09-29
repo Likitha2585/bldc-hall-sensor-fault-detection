@@ -1,4 +1,4 @@
-# BLDC Hall-Sensor Fault Detection
+﻿# BLDC Hall-Sensor Fault Detection
 
 Hall-sensor displacement fault detection for BLDC motors from phase-current data, plus a
 single-current start-up block. Built on the reference implementation
@@ -81,7 +81,7 @@ ratio-based features. Prefer the correlation features for that level.
 Goal: measure only ia and generate ib and ic.
 
 * `single_current_startup.py`: sine-tracking (SOGI) generator. Works on a simulated 5 to 140 Hz ramp
-  (within 15% error from about 80 ms, about 6% at speed) but **fails on the real recording**: the first
+  (within 15% error from about 80 ms, about 6% at speed) but **fails on the dataset recording**: the first
   ~10 ms of ia is a one-sided surge (mean 45.7 A, min 0.00 A), not an oscillation.
 * `single_current_startup_2stage.py`: two-stage block. Stage 1 (no valid oscillation yet) outputs nothing;
   Stage 2 turns on once two consecutive periods of ia agree within 15%, then ib = ia delayed by T/3
@@ -114,3 +114,13 @@ py -3.12 -m venv venv
 python -m pip install tensorflow scikit-learn numpy pandas pillow openpyxl matplotlib
 ```
 Dataset is not included; download it from IEEE DataPort and edit the path constants at the top of the scripts.
+
+## Usage
+
+    python BLDC_Hall_Detection_full.py            # original 8-CNN run (section 1)
+    python BLDC_new_methods.py --quick            # quick check; drop --quick for the full 13-model run (section 2)
+    python BLDC_raw_current_classifier.py         # raw-current classifier (section 3); reads Excel once, then cached
+    python BLDC_feature_table.py                  # per-recording feature table (section 3)
+    python single_current_startup_2stage_all.py   # start-up block on all recordings (section 4)
+
+Edit the data path constants at the top of each script first.
