@@ -1,4 +1,4 @@
-"""
+﻿"""
 Live local dashboard for the BLDC fault detection project.
 
 Reads results_summary.csv and phase_reconstruction_results.csv directly
@@ -22,7 +22,7 @@ import os
 app = Flask(__name__)
 
 RESULTS_CSV = "results_summary.csv"
-RECON_CSV = "phase_reconstruction_results.csv"
+RECON_CSV = "exploration/phase_reconstruction_results.csv"
 
 PAGE_TEMPLATE = """
 <!DOCTYPE html>
@@ -187,3 +187,4 @@ if __name__ == "__main__":
     print("Open http://127.0.0.1:5000 in your browser")
     print("Press Ctrl+C to stop")
     app.run(debug=True, port=5000)
+
