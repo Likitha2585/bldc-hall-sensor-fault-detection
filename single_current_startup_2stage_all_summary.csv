@@ -1,0 +1,5 @@
+recording,samples,ia_first10ms_min,stage2_on_ms,ib_err_steady,ic_err_steady,sequence
+0.0001,600001,-0.0,59.6,0.177,0.265,1
+0.005,600001,-0.0,54.7,0.51,0.761,1
+0.01,600001,0.0,40.7,1.138,7.402,1
+no_delay,600001,0.0,59.2,0.066,0.055,1

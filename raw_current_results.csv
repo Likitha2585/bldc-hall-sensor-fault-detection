@@ -1,0 +1,13 @@
+level,model,bal_acc_timesplit,f1_timesplit,bal_acc_unseen_file
+0.0001,LogReg,100.0,1.0,79.2
+0.0001,SVM-RBF,100.0,1.0,100.0
+0.0001,RandForest,100.0,1.0,100.0
+0.0001,RF ablation (all/no-recon/recon-only),100.0/100.0/100.0,,
+0.005,LogReg,100.0,1.0,83.3
+0.005,SVM-RBF,100.0,1.0,100.0
+0.005,RandForest,100.0,1.0,100.0
+0.005,RF ablation (all/no-recon/recon-only),100.0/100.0/100.0,,
+0.01,LogReg,100.0,1.0,83.3
+0.01,SVM-RBF,100.0,1.0,100.0
+0.01,RandForest,100.0,1.0,100.0
+0.01,RF ablation (all/no-recon/recon-only),100.0/100.0/100.0,,
