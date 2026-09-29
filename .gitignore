@@ -9,3 +9,9 @@ feature_cache/
 *.xlsx
 
 reports/Project_Commands_Reference.*
+*.npy
+*.h5
+.DS_Store
+*commands_reference*
+*setup_notes*
+reports/*.docx~
