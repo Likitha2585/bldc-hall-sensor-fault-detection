@@ -7,3 +7,5 @@ venv/
 raw_cache/
 feature_cache/
 *.xlsx
+
+reports/Project_Commands_Reference.*
